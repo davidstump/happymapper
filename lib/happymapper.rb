@@ -206,8 +206,8 @@ module HappyMapper
       # If an attribute is nil and state_when_nil is defined, use that value
       # as the attribute's value
       #
-      if value.nil? && options[:state_when_nil]
-        value = options[:state_when_nil]
+      if value.nil? && attribute.options[:state_when_nil]
+        value = attribute.options[:state_when_nil]
       end
 
       #
