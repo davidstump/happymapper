@@ -13,7 +13,7 @@ module HappyMapper
     base.instance_variable_set("@attributes", {})
     base.instance_variable_set("@elements", {})
     base.instance_variable_set("@registered_namespaces", {})
-    
+
     base.extend ClassMethods
   end
 
@@ -68,7 +68,7 @@ module HappyMapper
       @namespace = namespace if namespace
       @namespace
     end
-    
+
     def register_namespace(namespace, ns)
       @registered_namespaces.merge!(namespace => ns)
     end
@@ -165,18 +165,18 @@ module HappyMapper
       #
       write_out_to_xml = true
     end
-    
+
     #
     # Add all the registered namespaces to the current node and the current node's
     # root element. Without adding it to the root element it is not possible to
     # parse or use xpath to find elements.
     #
     if self.class.instance_variable_get('@registered_namespaces')
-      
+
       # Given a node, continue moving up to parents until there are no more parents
       find_root_node = lambda {|node| while node.parent? ; node = node.parent ; end ; node }
       root_node = find_root_node.call(current_node)
-      
+
       # Add the registered namespace to the found root node only if it does not already have one defined
       self.class.instance_variable_get('@registered_namespaces').each_pair do |prefix,href|
         XML::Namespace.new(current_node,prefix,href)
@@ -189,7 +189,7 @@ module HappyMapper
     # precendence over one that is handed down to composed sub-classes.
     #
     tag_namespace = current_node.namespaces.find_by_prefix(self.class.namespace) || default_namespace
-    
+
     # Set the namespace of the current node to the specified namespace
     current_node.namespaces.namespace = tag_namespace if tag_namespace
 
@@ -199,8 +199,16 @@ module HappyMapper
     #
     self.class.attributes.each do |attribute|
       attribute_namespace = current_node.namespaces.find_by_prefix(attribute.options[:namespace]) || default_namespace
-      
-      value = send(attribute.method_name)
+
+      value = send(attribute.method_name) || attribute.options[:state_when_nil]
+
+      #
+      # If an attribute is nil and state_when_nil is defined, use that value
+      # as the attribute's value
+      #
+      if value.nil? && options[:state_when_nil]
+        value = options[:state_when_nil]
+      end
 
       #
       # If the attribute has a :on_save attribute defined that is a proc or
@@ -213,7 +221,7 @@ module HappyMapper
           value = send(on_save_operation,value)
         end
       end
-      
+
       current_node[ "#{attribute_namespace ? "#{attribute_namespace.prefix}:" : ""}#{attribute.tag}" ] = value.to_s
     end
 
@@ -223,14 +231,14 @@ module HappyMapper
     self.class.elements.each do |element|
 
       tag = element.tag || element.name
-      
+
       element_namespace = current_node.namespaces.find_by_prefix(element.options[:namespace]) || tag_namespace
-      
+
       value = send(element.name)
 
       #
       # If the element defines an :on_save lambda/proc then we will call that
-      # operation on the specified value. This allows for operations to be 
+      # operation on the specified value. This allows for operations to be
       # performed to convert the value to a specific value to be saved to the xml.
       #
       if on_save_operation = element.options[:on_save]
@@ -280,7 +288,7 @@ module HappyMapper
           current_node << XML::Node.new(tag,item.to_s,element_namespace)
 
         else
-          
+
           #
           # Normally a nil value would be ignored, however if specified then
           # an empty element will be written to the xml
