@@ -200,7 +200,7 @@ module HappyMapper
     self.class.attributes.each do |attribute|
       attribute_namespace = current_node.namespaces.find_by_prefix(attribute.options[:namespace]) || default_namespace
 
-      value = send(attribute.method_name) || attribute.options[:state_when_nil]
+      value = send(attribute.method_name)
 
       #
       # If an attribute is nil and state_when_nil is defined, use that value
