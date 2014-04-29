@@ -2,6 +2,8 @@ require 'rubygems'
 require 'date'
 require 'time'
 require 'xml'
+require 'happymapper/errors'
+require 'pry'
 
 class Boolean; end
 
@@ -229,8 +231,8 @@ module HappyMapper
     # All all the elements defined (e.g. has_one, has_many, element) ...
     #
     self.class.elements.each do |element|
-
       tag = element.tag || element.name
+      required = element.options[:required] || false
 
       element_namespace = current_node.namespaces.find_by_prefix(element.options[:namespace]) || tag_namespace
 
@@ -269,9 +271,23 @@ module HappyMapper
         values = [value]
       end
 
+      #
+      # Check for required option and raise RequiredElementNotFound error if
+      # element is blank or nil
+      #
+      if value.nil? && required
+        raise Pescy::RequiredElementNotFound, element.tag
+      end
+
+      #
+      # Check that the length of a string element does not exceed the max_length
+      # option if it is present
+      #
+      if element.options[:max_length] && !value.nil? && value.length > element.options[:max_length]
+        raise Pescy::ElementExceedsMaxLength, element.tag
+      end
 
       values.each do |item|
-
         if item.is_a?(HappyMapper)
 
           #
@@ -281,6 +297,7 @@ module HappyMapper
           item.to_xml(current_node,element_namespace)
 
         elsif item
+
 
           #
           # When a value exists we should append the value for the tag

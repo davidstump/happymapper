@@ -1,9 +1,9 @@
 module HappyMapper
   class Item
-    attr_accessor :name, :type, :tag, :options, :namespace
-    
+    attr_accessor :name, :type, :tag, :required, :options, :namespace
+
     Types = [String, Float, Time, Date, DateTime, Integer, Boolean]
-    
+
     # options:
     #   :deep   =>  Boolean False to only parse element's children, True to include
     #               grandchildren and all others down the chain (// in expath)
@@ -13,19 +13,21 @@ module HappyMapper
     #   :raw    =>  Boolean Use raw node value (inc. tags) when parsing.
     #   :single =>  Boolean False if object should be collection, True for single object
     #   :tag    =>  String Element name if it doesn't match the specified name.
+    #   :required => Boolean False if element is optional, True if element is required to generate xml
     def initialize(name, type, o={})
       self.name = name.to_s
       self.type = type
       self.tag = o.delete(:tag) || name.to_s
+      self.required = o.delete(:tag) || false
       self.options = o
-      
+
       @xml_type = self.class.to_s.split('::').last.downcase
     end
-    
+
     def constant
       @constant ||= constantize(type)
     end
-        
+
     def from_xml_node(node, namespace)
       if primitive?
         find(node, namespace) do |n|
@@ -55,7 +57,7 @@ module HappyMapper
         end
       end
     end
-    
+
     def xpath(namespace = self.namespace)
       xpath  = ''
       xpath += './/' if options[:deep]
@@ -64,26 +66,26 @@ module HappyMapper
       # puts "xpath: #{xpath}"
       xpath
     end
-    
+
     def primitive?
       Types.include?(constant)
     end
-    
+
     def element?
       @xml_type == 'element'
     end
-    
+
     def attribute?
       !element?
     end
-    
+
     def method_name
       @method_name ||= name.tr('-', '_')
     end
-    
+
     def typecast(value)
       return value if value.kind_of?(constant) || value.nil?
-      begin        
+      begin
         if    constant == String    then value.to_s
         elsif constant == Float     then value.to_f
         elsif constant == Time      then Time.parse(value.to_s)
@@ -110,15 +112,15 @@ module HappyMapper
         value
       end
     end
-    
+
     private
       def constantize(type)
         if type.is_a?(String)
           names = type.split('::')
           constant = Object
           names.each do |name|
-            constant =  constant.const_defined?(name) ? 
-                          constant.const_get(name) : 
+            constant =  constant.const_defined?(name) ?
+                          constant.const_get(name) :
                           constant.const_missing(name)
           end
           constant
@@ -126,7 +128,7 @@ module HappyMapper
           type
         end
       end
-      
+
       def find(node, namespace, &block)
         if options[:namespace] == false
           namespace = nil
@@ -137,7 +139,7 @@ module HappyMapper
           # this node has a custom namespace (that is present in the doc)
           namespace = "#{DEFAULT_NS}:#{self.namespace}"
         end
-        
+
         if element?
           if(options[:single].nil? || options[:single])
             result = node.find_first(xpath(namespace), namespace)
